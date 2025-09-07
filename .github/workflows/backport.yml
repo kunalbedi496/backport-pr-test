@@ -25,13 +25,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # === Prepare squash commit into v4 backport branch ===
-      - name: Prepare v4 backport branch
+      # === Prepare squash commit for v4 ===
+      - name: Prepare v4 backport commit
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
         run: |
           git fetch origin v4
-          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
-
+          git checkout origin/v4 -b temp-v4
           if git merge --squash origin/${{ github.head_ref }}; then
             git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v4"
           else
@@ -51,13 +50,12 @@ jobs:
           draft: true
           commit-message: "Backport of PR #${{ github.event.pull_request.number }} to v4"
 
-      # === Prepare squash commit into v3 backport branch ===
-      - name: Prepare v3 backport branch
+      # === Prepare squash commit for v3 ===
+      - name: Prepare v3 backport commit
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
         run: |
           git fetch origin v3
-          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
-
+          git checkout origin/v3 -b temp-v3
           if git merge --squash origin/${{ github.head_ref }}; then
             git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v3"
           else
