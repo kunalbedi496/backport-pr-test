@@ -51,6 +51,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: v4
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v4
+          path: .   # <-- ✅ ensures it uses the current (squash-temp) branch contents
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v4"
           body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4. May contain conflicts."
           draft: true
@@ -63,6 +64,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: v3
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v3
+          path: .   # <-- ✅ same here
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v3"
           body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3. May contain conflicts."
           draft: true
