@@ -90,14 +90,16 @@ jobs:
 
       - name: Create Draft PR to v4
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: v4
-          branch: backport/pr-${{ github.event.pull_request.number }}-to-v4
-          title: "[Draft] Backport #${{ github.event.pull_request.number }} to v4"
-          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4 (may contain conflicts)."
-          draft: true
+        run: |
+          gh pr create \
+            --base v4 \
+            --head backport/pr-${{ github.event.pull_request.number }}-to-v4 \
+            --title "[Draft] Backport #${{ github.event.pull_request.number }} to v4" \
+            --body "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4. May contain conflicts." \
+            --draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       # === Draft Backport to v3 ===
       - name: Backport to v3
