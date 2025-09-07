@@ -1,0 +1,47 @@
+name: Backport PR
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  backport:
+    if: github.event.pull_request.draft == true && startsWith(github.event.label.name, 'backport-')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # needed for full git history
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Squash commits and create backport branch
+        run: |
+          PR_BRANCH="${{ github.head_ref }}"
+          BASE_BRANCH="main"  # change this if needed
+          BACKPORT_BRANCH="backport-${PR_BRANCH}"
+
+          echo "🔹 Fetching PR branch..."
+          git fetch origin $PR_BRANCH
+          git checkout -b $BACKPORT_BRANCH origin/$PR_BRANCH
+
+          echo "🔹 Squashing commits..."
+          git reset $(git merge-base $PR_BRANCH $BASE_BRANCH)
+          git add -A
+          git commit -m "Backport: squashed changes from $PR_BRANCH"
+
+          echo "🔹 Pushing backport branch..."
+          git push origin $BACKPORT_BRANCH --force
+
+      - name: Create Backport PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          base: release-branch  # replace with your target backport branch
+          branch: ${{ github.head_ref }}
+          title: "Backport: ${{ github.event.pull_request.title }}"
+          body: "This PR backports changes from #${{ github.event.pull_request.number }}"
