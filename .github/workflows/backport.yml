@@ -48,7 +48,7 @@ jobs:
 
       - name: Squash PR commits
         run: |
-          # Make sure we have both branches
+          # Fetch both base (v5/main) and PR branch
           git fetch origin ${{ github.base_ref }}
           git fetch origin ${{ github.head_ref }}
 
@@ -66,7 +66,7 @@ jobs:
         run: |
           git fetch origin v4
           git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
-          git cherry-pick -x squash-temp || true
+          git cherry-pick -x $(git rev-parse squash-temp) || true
           git push origin backport/pr-${{ github.event.pull_request.number }}-to-v4 --force
 
       - name: Create Draft PR to v4
@@ -86,7 +86,7 @@ jobs:
         run: |
           git fetch origin v3
           git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
-          git cherry-pick -x squash-temp || true
+          git cherry-pick -x $(git rev-parse squash-temp) || true
           git push origin backport/pr-${{ github.event.pull_request.number }}-to-v3 --force
 
       - name: Create Draft PR to v3
