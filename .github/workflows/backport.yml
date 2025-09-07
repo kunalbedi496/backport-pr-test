@@ -78,7 +78,11 @@ jobs:
           git add -A || true
           git commit -m "WIP: Backport with conflicts – requires manual resolution" || true
 
-          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v4 --force
+          # 🔥 Delete remote branch if it already exists
+          git push origin --delete backport/pr-${{ github.event.pull_request.number }}-to-v4 || true
+
+          # Push fresh branch
+          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v4
 
       - name: Create Draft PR to v4
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
@@ -105,7 +109,11 @@ jobs:
           git add -A || true
           git commit -m "WIP: Backport with conflicts – requires manual resolution" || true
 
-          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v3 --force
+          # 🔥 Delete remote branch if it already exists
+          git push origin --delete backport/pr-${{ github.event.pull_request.number }}-to-v3 || true
+
+          # Push fresh branch
+          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v3
 
       - name: Create Draft PR to v3
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
