@@ -25,20 +25,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # ✅ Squash all commits in PR into one temp commit
+      # === Squash commits into temp branch ===
       - name: Squash PR commits
         run: |
+          # Fetch base (v5/main) and PR branch
           git fetch origin ${{ github.base_ref }}
           git fetch origin ${{ github.head_ref }}
 
-          # Start from base branch (e.g. v5/main)
+          # Start from base branch
           git checkout -b squash-temp origin/${{ github.base_ref }}
 
-          # Try squash merge from PR branch
+          # Merge squash PR branch changes
           if git merge --squash origin/${{ github.head_ref }}; then
             git commit -m "Squash of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
           else
-            # If conflicts, stage all and still commit (WIP)
             git add -A
             git commit -m "WIP: Backport of PR #${{ github.event.pull_request.number }} – contains conflicts"
           fi
@@ -51,10 +51,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: v4
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v4
-          path: .   # <-- ✅ ensures it uses the current (squash-temp) branch contents
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v4"
           body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4. May contain conflicts."
           draft: true
+          branch-suffix: timestamp   # ✅ ensures unique branches if retriggered
 
       # === Draft Backport to v3 ===
       - name: Create Draft PR to v3
@@ -64,7 +64,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: v3
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v3
-          path: .   # <-- ✅ same here
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v3"
           body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3. May contain conflicts."
           draft: true
+          branch-suffix: timestamp   # ✅ ensures unique branches if retriggered
