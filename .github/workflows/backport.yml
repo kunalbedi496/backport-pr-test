@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, labeled, reopened, ready_for_review]
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   draft-backports:
     if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3') || contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
@@ -21,6 +25,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Authenticate GitHub
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
       - name: Squash PR commits
         run: |
           # Squash all commits relative to base branch into one commit
@@ -35,7 +43,7 @@ jobs:
         run: |
           git fetch origin v4
           git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
-          git cherry-pick squash-temp || true
+          git cherry-pick -x squash-temp || true
           git push origin backport/pr-${{ github.event.pull_request.number }}-to-v4 --force
 
       - name: Create Draft PR to v4
@@ -55,7 +63,7 @@ jobs:
         run: |
           git fetch origin v3
           git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
-          git cherry-pick squash-temp || true
+          git cherry-pick -x squash-temp || true
           git push origin backport/pr-${{ github.event.pull_request.number }}-to-v3 --force
 
       - name: Create Draft PR to v3
