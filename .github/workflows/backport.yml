@@ -25,27 +25,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Authenticate GitHub
+      # ✅ Squash all commits in PR into one temp commit
+      - name: Squash PR commits
         run: |
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git remote -v
+          git fetch origin ${{ github.base_ref }}
+          git fetch origin ${{ github.head_ref }}
 
-      # === Backport to v4 ===
-      - name: Squash PR commits into v4 branch
-        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
-        run: |
-          git fetch origin v4
-          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
+          # Start from base branch (e.g. v5/main)
+          git checkout -b squash-temp origin/${{ github.base_ref }}
 
-          # Squash merge directly into backport branch
-          if ! git merge --squash origin/${{ github.head_ref }}; then
-            echo "⚠️ Conflicts detected, committing anyway"
+          # Try squash merge from PR branch
+          if git merge --squash origin/${{ github.head_ref }}; then
+            git commit -m "Squash of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
+          else
+            # If conflicts, stage all and still commit (WIP)
+            git add -A
+            git commit -m "WIP: Backport of PR #${{ github.event.pull_request.number }} – contains conflicts"
           fi
 
-          git add -A || true
-          git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v4 (squashed, may contain conflicts)" || true
-          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v4 --force
-
+      # === Draft Backport to v4 ===
       - name: Create Draft PR to v4
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
         uses: peter-evans/create-pull-request@v5
@@ -54,25 +52,10 @@ jobs:
           base: v4
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v4
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v4"
-          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4. ⚠️ May contain conflicts."
+          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4. May contain conflicts."
           draft: true
 
-      # === Backport to v3 ===
-      - name: Squash PR commits into v3 branch
-        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
-        run: |
-          git fetch origin v3
-          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
-
-          # Squash merge directly into backport branch
-          if ! git merge --squash origin/${{ github.head_ref }}; then
-            echo "⚠️ Conflicts detected, committing anyway"
-          fi
-
-          git add -A || true
-          git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v3 (squashed, may contain conflicts)" || true
-          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v3 --force
-
+      # === Draft Backport to v3 ===
       - name: Create Draft PR to v3
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
         uses: peter-evans/create-pull-request@v5
@@ -81,5 +64,5 @@ jobs:
           base: v3
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v3
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v3"
-          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3. ⚠️ May contain conflicts."
+          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3. May contain conflicts."
           draft: true
