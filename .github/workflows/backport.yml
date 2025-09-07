@@ -1,47 +1,70 @@
-name: Backport PR
+name: Draft Parallel Backports
 
 on:
   pull_request:
-    types: [labeled]
+    types: [opened, synchronize, labeled, reopened, ready_for_review]
 
 jobs:
-  backport:
-    if: github.event.pull_request.draft == true && startsWith(github.event.label.name, 'backport-')
+  draft-backports:
+    if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3') || contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # needed for full git history
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Squash commits and create backport branch
+      - name: Squash PR commits
         run: |
-          PR_BRANCH="${{ github.head_ref }}"
-          BASE_BRANCH="main"  # change this if needed
-          BACKPORT_BRANCH="backport-${PR_BRANCH}"
+          # Squash all commits relative to base branch into one commit
+          git fetch origin ${{ github.base_ref }}
+          git checkout -b squash-temp
+          git merge --squash origin/${{ github.head_ref }}
+          git commit -m "Squash of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
 
-          echo "🔹 Fetching PR branch..."
-          git fetch origin $PR_BRANCH
-          git checkout -b $BACKPORT_BRANCH origin/$PR_BRANCH
+      # === Draft Backport to v4 ===
+      - name: Backport to v4
+        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
+        run: |
+          git fetch origin v4
+          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
+          git cherry-pick squash-temp || true
+          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v4 --force
 
-          echo "🔹 Squashing commits..."
-          git reset $(git merge-base $PR_BRANCH $BASE_BRANCH)
-          git add -A
-          git commit -m "Backport: squashed changes from $PR_BRANCH"
-
-          echo "🔹 Pushing backport branch..."
-          git push origin $BACKPORT_BRANCH --force
-
-      - name: Create Backport PR
-        uses: peter-evans/create-pull-request@v6
+      - name: Create Draft PR to v4
+        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
+        uses: peter-evans/create-pull-request@v5
         with:
-          base: release-branch  # replace with your target backport branch
-          branch: ${{ github.head_ref }}
-          title: "Backport: ${{ github.event.pull_request.title }}"
-          body: "This PR backports changes from #${{ github.event.pull_request.number }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: v4
+          branch: backport/pr-${{ github.event.pull_request.number }}-to-v4
+          title: "[Draft] Backport #${{ github.event.pull_request.number }} to v4"
+          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4 (while original PR is still in draft)."
+          draft: true
+
+      # === Draft Backport to v3 ===
+      - name: Backport to v3
+        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
+        run: |
+          git fetch origin v3
+          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
+          git cherry-pick squash-temp || true
+          git push origin backport/pr-${{ github.event.pull_request.number }}-to-v3 --force
+
+      - name: Create Draft PR to v3
+        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: v3
+          branch: backport/pr-${{ github.event.pull_request.number }}-to-v3
+          title: "[Draft] Backport #${{ github.event.pull_request.number }} to v3"
+          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3 (while original PR is still in draft)."
+          draft: true
