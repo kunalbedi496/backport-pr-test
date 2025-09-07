@@ -64,6 +64,9 @@ jobs:
           # Save squash commit SHA for later cherry-pick
           echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
+          # Debug: print squash commit log
+          git log -1 --oneline
+
       # === Draft Backport to v4 ===
       - name: Backport to v4
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
@@ -71,8 +74,9 @@ jobs:
           git fetch origin v4
           git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
 
-          # Cherry-pick the squash commit
-          git cherry-pick -x ${{ steps.squash.outputs.commit_sha }} || true
+          # Merge squash branch content into backport branch
+          git merge --squash squash-temp || true
+          git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v4" || true
 
           # If conflicts exist, commit them anyway so Draft PR gets created
           git add -A || true
@@ -102,8 +106,9 @@ jobs:
           git fetch origin v3
           git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
 
-          # Cherry-pick the squash commit
-          git cherry-pick -x ${{ steps.squash.outputs.commit_sha }} || true
+          # Merge squash branch content into backport branch
+          git merge --squash squash-temp || true
+          git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v4" || true
 
           # If conflicts exist, commit them anyway so Draft PR gets created
           git add -A || true
