@@ -25,16 +25,67 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # ✅ Create squash commit into workspace
-      - name: Squash PR commits
+      - name: Authenticate GitHub
         run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote -v
+
+      # ✅ Install GitHub CLI for debugging
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      # ✅ Debug token, actor, and repo
+      - name: Debug GitHub token permissions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Actor: $GITHUB_ACTOR"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Event Name: $GITHUB_EVENT_NAME"
+          gh auth status || true
+
+      # ✅ Squash all commits in PR into one
+      - name: Squash PR commits
+        id: squash
+        run: |
+          # Fetch both base (v5/main) and PR branch
           git fetch origin ${{ github.base_ref }}
           git fetch origin ${{ github.head_ref }}
-          git checkout origin/${{ github.base_ref }} -B squash-temp
+
+          # Create a squash branch starting from base (e.g. main/v5)
+          git checkout -b squash-temp origin/${{ github.base_ref }}
+
+          # Squash all commits from PR branch (head_ref) into one
           git merge --squash origin/${{ github.head_ref }}
           git commit -m "Squash of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
 
-      # === Backport to v4 ===
+          # Save squash commit SHA for later (debug only, not used directly here)
+          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+          # Debug: print squash commit log
+          git log -1 --oneline
+
+      # === Draft Backport to v4 ===
+      - name: Prepare backport workdir for v4
+        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
+        run: |
+          git fetch origin v4
+          git checkout -b backport-workdir-v4 origin/v4
+
+          # Try merge squash-temp into v4 branch
+          if ! git merge --squash squash-temp; then
+            echo "⚠️ Merge conflicts detected, committing with markers"
+          fi
+
+          # Always try to commit changes, even if conflicts exist
+          git add -A || true
+          git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v4 (may contain conflicts)" || true
+
+          # Debug: confirm commit exists
+          git log -3 --oneline
+
       - name: Create Draft PR to v4
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
         uses: peter-evans/create-pull-request@v5
@@ -43,11 +94,28 @@ jobs:
           base: v4
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v4
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v4"
-          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4 (may contain conflicts)."
+          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v4. ⚠️ May contain conflicts."
           draft: true
-          commit-message: "Backport of PR #${{ github.event.pull_request.number }} to v4"
 
-      # === Backport to v3 ===
+      # === Draft Backport to v3 ===
+      - name: Prepare backport workdir for v3
+        if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
+        run: |
+          git fetch origin v3
+          git checkout -b backport-workdir-v3 origin/v3
+
+          # Try merge squash-temp into v3 branch
+          if ! git merge --squash squash-temp; then
+            echo "⚠️ Merge conflicts detected, committing with markers"
+          fi
+
+          # Always try to commit changes, even if conflicts exist
+          git add -A || true
+          git commit -m "Backport of PR #${{ github.event.pull_request.number }} to v3 (may contain conflicts)" || true
+
+          # Debug: confirm commit exists
+          git log -3 --oneline
+
       - name: Create Draft PR to v3
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
         uses: peter-evans/create-pull-request@v5
@@ -56,6 +124,5 @@ jobs:
           base: v3
           branch: backport/pr-${{ github.event.pull_request.number }}-to-v3
           title: "[Draft] Backport #${{ github.event.pull_request.number }} to v3"
-          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3 (may contain conflicts)."
+          body: "Automated squash backport of PR #${{ github.event.pull_request.number }} to v3. ⚠️ May contain conflicts."
           draft: true
-          commit-message: "Backport of PR #${{ github.event.pull_request.number }} to v3"
