@@ -23,11 +23,17 @@ jobs:
 
       - name: Squash PR commits
         run: |
-          # Squash all commits relative to base branch into one commit
+          # Make sure we have both branches
           git fetch origin ${{ github.base_ref }}
-          git checkout -b squash-temp
+          git fetch origin ${{ github.head_ref }}
+
+          # Create a squash branch starting from base (e.g. main/v5)
+          git checkout -b squash-temp origin/${{ github.base_ref }}
+
+          # Squash all commits from PR branch (head_ref) into one
           git merge --squash origin/${{ github.head_ref }}
           git commit -m "Squash of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
+
 
       # === Draft Backport to v4 ===
       - name: Backport to v4
