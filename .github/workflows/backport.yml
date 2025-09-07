@@ -30,11 +30,11 @@ jobs:
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v4')
         run: |
           git fetch origin v4
-          git fetch origin ${{ github.head_ref }}
+          git fetch origin pull/${{ github.event.pull_request.number }}/head:pr-${{ github.event.pull_request.number }}-head
 
-          git checkout origin/v4 -b backport/pr-${{ github.event.pull_request.number }}-to-v4
+          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v4 origin/v4
 
-          if git merge --squash origin/${{ github.head_ref }}; then
+          if git merge --squash pr-${{ github.event.pull_request.number }}-head; then
             git commit -m "Backport (squash) of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
           else
             git add -A
@@ -58,11 +58,11 @@ jobs:
         if: contains(github.event.pull_request.labels.*.name, 'backport-to-v3')
         run: |
           git fetch origin v3
-          git fetch origin ${{ github.head_ref }}
+          git fetch origin pull/${{ github.event.pull_request.number }}/head:pr-${{ github.event.pull_request.number }}-head
 
-          git checkout origin/v3 -b backport/pr-${{ github.event.pull_request.number }}-to-v3
+          git checkout -b backport/pr-${{ github.event.pull_request.number }}-to-v3 origin/v3
 
-          if git merge --squash origin/${{ github.head_ref }}; then
+          if git merge --squash pr-${{ github.event.pull_request.number }}-head; then
             git commit -m "Backport (squash) of PR #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
           else
             git add -A
