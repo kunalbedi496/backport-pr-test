@@ -28,6 +28,23 @@ jobs:
       - name: Authenticate GitHub
         run: |
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git remote -v
+
+      # ✅ Install GitHub CLI for debugging
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      # ✅ Debug token, actor, and repo
+      - name: Debug GitHub token permissions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Actor: $GITHUB_ACTOR"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Event Name: $GITHUB_EVENT_NAME"
+          gh auth status || true
 
       - name: Squash PR commits
         run: |
